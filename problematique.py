@@ -125,9 +125,24 @@ for i in range(0, len(t)):
     acc_lin[i][2] = acceleration_lin_Cw(qb[i], qb_1[i], qb_2[i], qc[i], qc_1[i], qc_2[i])[2]
 
 acc_max = 0
-for i, element in enumerate(acc_lin):
-    if np.linalg.norm(element) >= acc_max:
-        acc_max = element
+for i in range(0, len(acc_lin)):
+    if np.abs(acc_lin[i][1]) >= acc_max:
+        acc_max = np.abs(acc_lin[i][1])
         indexe = i
 
-print(f"Accélération linéaire maximale au point Cw : {np.max(acc_lin, axis=0)}N.x + {np.max(acc_lin, axis=0)}N.y")
+fig1, axes = plt.subplots(2, 1, sharex=True)
+
+ax = axes[0]
+ax.plot(t, acc_lin[:, 1], color="red", ls=":",)
+ax.grid()
+ax.set_ylabel("Accélération (m/s²)")
+ax.set_title("Composante Cy de l'accélération linéaire au point Cw")
+
+plt.show()
+
+
+print("="*100)
+print(" "*45 + "Résultats " + " "*45)
+print("="*100)
+print(f"Accélération linéaire maximale au point Cw : {acc_lin[indexe][0]}*N.x + {acc_lin[indexe][1]}*N.y + {acc_lin[indexe][2]}*N.z")
+print("="*100)
