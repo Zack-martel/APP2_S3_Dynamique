@@ -1,0 +1,16 @@
+Inertie de B autour de Bcm selon Nz> : mB*(LBwb/4)^2)
+Inertie de C autour de Ccm selon Nz> : mC*(LCmb/4)^2)
+
+Masse de B: 						mB = 1.232 kg
+Masse de C: 						mC = 0.954 kg
+Distance entre Ao et Bo: 				LA = 0.07 m
+Distance entre Bo et Bcm:				LBcm = 0.242 m
+Distance entre les roues avant et arriÃ¨re selon Bx> : 	LBwb = 0.257 m
+	(les roues sont centrÃ©es autour de Bcm)
+Distance entre Bo et BC/CB: 				LBhitch = 0.472 m
+Distance entre CB et l'axe des roues du trailer: 	LCw = 0.206 m
+Distance entre CB et Ccm: LCcm = 0.206 m
+Distance entre les masses D et E: 			LCmb = 0.303 m
+	(les masses sont centrées autour de l'axe des roues)
+Rayon de la roue					rW = 0.02 m
+Distance d'une roue de la remorque à  l'autre		wTrailer = 0.2 m
