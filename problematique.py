@@ -1,9 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from numpy import cos, sin
 from scipy.integrate import solve_ivp
 import sympy as sp
-import sympy.physics.mechanics as mec
+import sympy.physics.vector as vec
 
 # Définition des variables globales
 LA = 0.07
@@ -14,71 +13,55 @@ LCcm = 0.0206
 rW = 0.02
 wTrailer = 0.2
 
+v_Tapis = 2.222
+
 # Lecture des fichier textes
 data_stagiaire = np.loadtxt("Data_Stagiaire.txt", comments="%")
 solution_qB = np.loadtxt("Solution_qB.txt", comments="%")
 
-t = data_stagiaire[:, 0]
-qc = data_stagiaire[:, 6]
-qb = solution_qB[:, 1]
+t_val = data_stagiaire[:, 0]
+qC_val = data_stagiaire[:, 6]
+qB_val = solution_qB[:, 1]
+Box_val = data_stagiaire[:, 1]
+Boy_val = data_stagiaire[:, 2]
+wb_val = data_stagiaire[:, 5]
+
+Box, Boy = vec.dynamicsymbols("Box Boy")
+
+qB, qC = vec.dynamicsymbols("qB qC")
+wB, wC = vec.dynamicsymbols("wB wC")
 
 # Définition des référentielle
-N = mec.ReferenceFrame("N")
-B = mec.ReferenceFrame("B")
-C = mec.ReferenceFrame("C")
+N = vec.ReferenceFrame("N")
+B = N.orientnew("B", "Axis", [qB, N.z])
+C = B.orientnew("C", "Axis", [qC, B.z])
 
-"""# Définition des points d'intérêt
-Ao = mec.Point("Ao")
+B.set_ang_vel(N, (wB * N.z))
+C.set_ang_vel(B, (wC * B.z))
 
-Bo = mec.Point("Bo")
-Bo.set_pos(Ao, (LA*cos(qb)*N.y) - (LA*sin(qb)*N.x))
+Ao = vec.Point("Ao")
+Ao.set_vel(N, (v_Tapis*N.x))
 
-Bcm = mec.Point("Bcm")
-Bcm.set_pos(Bo, (-LBcm*B.x))
+Bo = Ao.locatenew("Bo", (Box*N.x + Boy*N.y))
+Bo.set_vel(B, 0)
 
-Bc = mec.Point("Bc")
-Bc.set_pos(Bo, (-LBhitch*B.x))
+Bc = Bo.locatenew("Bc", (-LBhitch*B.x))
+Bc.set_vel(B, 0)
 
-Cb = mec.Point("Cb")
-Cb.set_pos(Bc, 0)
+Cb = Bc.locatenew("Cb", 0)
+Cb.set_vel(C, 0)
 
-Ccm = mec.Point("Ccm")
-Ccm.set_pos(Cb, (-LCcm*C.x))
+Ccm = Cb.locatenew("Ccm", (-LCcm*C.x))
+Ccm.set_vel(C, 0)
 
-Cw = mec.Point("Cw")
-Cw.set_pos(Ccm, (-wTrailer/2)*C.y)
+Cw = Ccm.locatenew("Cw", (-(wTrailer / 2)*C.y))
+Cw.set_vel(C, 0)
 
-Wt= mec.Point("Wt")
-Wt.set_pos(Cw, (-rW*C.z))
+acc_lin = Cw.a2pt_theory(Cb, N, C)
 
-# Définition des vecteurs position
-r_BowAo = Bo.pos_from(Ao)
-r_BcwBo = Bc.pos_from(Bo)
-r_CcmwBc = Ccm.pos_from(Bc)
-r_CwwCcm = Cw.pos_from(Ccm)
+print(f"acc_lin = {acc_lin}")
 
-r_CwwAo = r_BowAo + r_BcwBo + r_CcmwBc + r_CwwCcm"""
-
-# Fonction pour déterminer la vitesse linéaire de Cw
-def vitesse_lin_Cw(qb, dqb, qc, dqc):
-    dr_BowA0 = LA * (-(cos(qb) * dqb)*N.x - (sin(qb) * dqb)*N.y)
-    dr_BcwBo = (-dqb * LBhitch)*B.y
-    dr_CcmwBc = (-(dqb + dqc) * LCcm)*C.y
-    dr_CwwCcm = ((dqb + dqc) * (wTrailer / 2))*C.x
-    v_N_Cw = dr_BowA0 + dr_BcwBo + dr_CcmwBc + dr_CwwCcm
-    return v_N_Cw
-
-# Fonction pour déterminer l'accélération linéaire de Cw
-def acceleration_lin_Cw(qb, dqb, ddqb, qc, dqc, ddqc):
-    ddr_BowA0 = LA * (((sin(qb) * (dqb**2)) - (cos(qb) * ddqb))*N.x + ((-cos(qb) * (dqb**2)) - (sin(qb) * ddqb))*N.y)
-    ddr_BcwBo = LBhitch * ((dqb**2)*B.x - (ddqb)*B.y)
-    ddr_CcmwBc = LCcm * (((dqb + dqc)**2)*C.x - (ddqb + ddqc)*C.y)
-    ddr_CwwCcm = (wTrailer / 2) * ((ddqb + ddqc)*C.x + ((dqb + dqc)**2)*C.y)
-    a_N_Cw = ddr_BowA0 + ddr_BcwBo + ddr_CcmwBc + ddr_CwwCcm
-    return (a_N_Cw.dot(N.x)), (a_N_Cw.dot(N.y)), (a_N_Cw.dot(N.z)), 
-
-# Fonction pour calculer la dérivée première
-def derivee_1_num(f):
+def derivee_num(f):
     df = np.zeros(len(f))
     for i in range(0, len(f)):
         if i == 0:
@@ -92,48 +75,53 @@ def derivee_1_num(f):
             df[i] = (f[i + 1] - f[i - 1]) / (2 * h)  
     return df
 
-# Fonction pour calculer la dérivée seconde
-def derivee_2_num(df):
-    ddf = np.zeros(len(df))
-    for i in range(0, len(df)):
-        if i == 0:
-            h = df[i + 1] - df[i]
-            ddf[i] = (df[i + 1] - df[i]) / h
-        if i == (len(df) - 1):
-            h = df[i] - df[i - 1]
-            ddf[i] = (df[i] - df[i - 1]) / h
-        else:
-            h = df[i + 1] - df[i]
-            ddf[i] = (df[i + 1] - df[i - 1]) / (2 * h)  
-    return ddf
+# Définition des variables de substitution
+wc_val = derivee_num(qC_val)
+dwc_val = derivee_num(wc_val)
+
+dwb_val = derivee_num(wb_val)
+
+t_symbol = vec.dynamicsymbols._t
+
+wb_dot = sp.Derivative(wB, t_symbol)
+
+wc_dot = sp.Derivative(wC, t_symbol)
+
+Box_dot_val = derivee_num(Box_val)
+Boy_dot_val = derivee_num(Boy_val)
+
+Box_dot = sp.Derivative(Box, (t_symbol, 2))
+Boy_dot = sp.Derivative(Boy, (t_symbol, 2))
+
+# Résolution
+acc_lineaire = np.zeros((len(t_val), 3))
+
+for i in range(0, len(t_val)):
+    acc_num = acc_lin.subs([
+        (wb_dot, dwb_val[i]),
+        (wc_dot, dwc_val[i]),
+        (Box_dot, Box_dot_val[i]),
+        (Boy_dot, Boy_dot_val[i]),
+        (Box, Box_val[i]),
+        (Boy, Boy_val[i]),
+        (qB, qB_val[i]),
+        (qC, qC_val[i]),
+        (wB, wb_val[i]),
+        (wC, wc_val[i])
+    ]).evalf()
+
+    print(acc_num)
+
+    acc_lineaire[i, 0] = (acc_num.dot(N.x)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
+    acc_lineaire[i, 1] = (acc_num.dot(N.y)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
+    acc_lineaire[i, 2] = (acc_num.dot(N.z)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
 
 
-qb_1 = derivee_1_num(qb)
-qb_2 = derivee_2_num(derivee_1_num(qb))
-
-qc_1 = derivee_1_num(qc)
-qc_2 = derivee_2_num(derivee_1_num(qc))
-
-acc_lin = np.zeros((len(t), 3))
-
-for i in range(0, len(t)):
-    B.orient_axis(N, N.z, qb[i])
-    C.orient_axis(B, B.z, qc[i])
-
-    acc_lin[i][0] = acceleration_lin_Cw(qb[i], qb_1[i], qb_2[i], qc[i], qc_1[i], qc_2[i])[0]
-    acc_lin[i][1] = acceleration_lin_Cw(qb[i], qb_1[i], qb_2[i], qc[i], qc_1[i], qc_2[i])[1]
-    acc_lin[i][2] = acceleration_lin_Cw(qb[i], qb_1[i], qb_2[i], qc[i], qc_1[i], qc_2[i])[2]
-
-acc_max = 0
-for i in range(0, len(acc_lin)):
-    if np.abs(acc_lin[i][1]) >= acc_max:
-        acc_max = np.abs(acc_lin[i][1])
-        indexe = i
 
 fig1, axes = plt.subplots(2, 1, sharex=True)
 
 ax = axes[0]
-ax.plot(t, acc_lin[:, 1], color="red", ls=":",)
+ax.plot(t_val, acc_lineaire[:, 1], color="red")
 ax.grid()
 ax.set_ylabel("Accélération (m/s²)")
 ax.set_title("Composante Cy de l'accélération linéaire au point Cw")
@@ -141,8 +129,3 @@ ax.set_title("Composante Cy de l'accélération linéaire au point Cw")
 plt.show()
 
 
-print("="*100)
-print(" "*45 + "Résultats " + " "*45)
-print("="*100)
-print(f"Accélération linéaire maximale au point Cw : {acc_lin[indexe][0]}*N.x + {acc_lin[indexe][1]}*N.y + {acc_lin[indexe][2]}*N.z")
-print("="*100)
