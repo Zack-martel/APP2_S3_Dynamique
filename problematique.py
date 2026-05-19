@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.integrate import solve_ivp
 import sympy as sp
 import sympy.physics.vector as vec
 
@@ -29,18 +28,18 @@ wb_val = data_stagiaire[:, 5]
 Box, Boy = vec.dynamicsymbols("Box Boy")
 
 qB, qC = vec.dynamicsymbols("qB qC")
-wB, wC = vec.dynamicsymbols("wB wC")
+dqB, dqC = vec.dynamicsymbols("qB qC", 1)
 
 # Définition des référentielle
 N = vec.ReferenceFrame("N")
 B = N.orientnew("B", "Axis", [qB, N.z])
 C = B.orientnew("C", "Axis", [qC, B.z])
 
-B.set_ang_vel(N, (wB * N.z))
-C.set_ang_vel(B, (wC * B.z))
+B.set_ang_vel(N, (dqB * N.z))
+C.set_ang_vel(B, (dqC * B.z))
 
 Ao = vec.Point("Ao")
-Ao.set_vel(N, (v_Tapis*N.x))
+Ao.set_vel(N, 0)
 
 Bo = Ao.locatenew("Bo", (Box*N.x + Boy*N.y))
 Bo.set_vel(B, 0)
@@ -57,7 +56,7 @@ Ccm.set_vel(C, 0)
 Cw = Ccm.locatenew("Cw", (-(wTrailer / 2)*C.y))
 Cw.set_vel(C, 0)
 
-acc_lin = Cw.a2pt_theory(Cb, N, C)
+acc_lin = Cw.a2pt_theory(Ao, N, C)
 
 print(f"acc_lin = {acc_lin}")
 
@@ -76,16 +75,16 @@ def derivee_num(f):
     return df
 
 # Définition des variables de substitution
-wc_val = derivee_num(qC_val)
-dwc_val = derivee_num(wc_val)
+dqc_val = derivee_num(qC_val)
+ddqc_val = derivee_num(dqc_val)
 
-dwb_val = derivee_num(wb_val)
+ddqb_val = derivee_num(wb_val)
 
 t_symbol = vec.dynamicsymbols._t
 
-wb_dot = sp.Derivative(wB, t_symbol)
+ddqb = sp.Derivative(dqB, t_symbol)
 
-wc_dot = sp.Derivative(wC, t_symbol)
+ddqc = sp.Derivative(dqC, t_symbol)
 
 Box_dot_val = derivee_num(Box_val)
 Boy_dot_val = derivee_num(Boy_val)
@@ -98,24 +97,23 @@ acc_lineaire = np.zeros((len(t_val), 3))
 
 for i in range(0, len(t_val)):
     acc_num = acc_lin.subs([
-        (wb_dot, dwb_val[i]),
-        (wc_dot, dwc_val[i]),
+        (ddqb, ddqb_val[i]),
+        (ddqc, ddqc_val[i]),
         (Box_dot, Box_dot_val[i]),
         (Boy_dot, Boy_dot_val[i]),
         (Box, Box_val[i]),
         (Boy, Boy_val[i]),
         (qB, qB_val[i]),
         (qC, qC_val[i]),
-        (wB, wb_val[i]),
-        (wC, wc_val[i])
-    ]).evalf()
+        (dqB, wb_val[i]),
+        (dqC, dqc_val[i])
+    ])
 
-    print(acc_num)
+    #print(acc_num)
 
     acc_lineaire[i, 0] = (acc_num.dot(N.x)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
     acc_lineaire[i, 1] = (acc_num.dot(N.y)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
     acc_lineaire[i, 2] = (acc_num.dot(N.z)).subs([(qB, qB_val[i]), (qC, qC_val[i])])
-
 
 
 fig1, axes = plt.subplots(2, 1, sharex=True)
